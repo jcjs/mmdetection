@@ -16,6 +16,7 @@ def get_class_boxes(img, result, dataset='coco', class_int=0, score_thr=0.7, sho
         bbox_result, segm_result = result
     else:
         bbox_result, segm_result = result, None
+
     bboxes = np.vstack(bbox_result)
 
     if bbox_result is not None:
