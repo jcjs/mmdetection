@@ -57,20 +57,23 @@ def get_class_boxes(img, result, dataset='coco', class_int=0, score_thr=0.7, sho
         return res
 
 
-cfg = mmcv.Config.fromfile('configs/faster_rcnn_r50_fpn_1x.py')
+# cfg = mmcv.Config.fromfile('configs/faster_rcnn_r50_fpn_1x.py')
 # cfg = mmcv.Config.fromfile('configs/faster_rcnn_x101_64x4d_fpn_1x.py')
+cfg = mmcv.Config.fromfile('configs/dcn/cascade_mask_rcnn_dconv_c3-c5_r50_fpn_1x.py')
 
 cfg.model.pretrained = None
 
 # construct the model and load checkpoint
 model = build_detector(cfg.model, test_cfg=cfg.test_cfg)
-_ = load_checkpoint(model, 'https://s3.ap-northeast-2.amazonaws.com/open-mmlab/mmdetection/models/faster_rcnn_r50_fpn_1x_20181010-3d1b3351.pth')
+# _ = load_checkpoint(model, 'https://s3.ap-northeast-2.amazonaws.com/open-mmlab/mmdetection/models/faster_rcnn_r50_fpn_1x_20181010-3d1b3351.pth')
 # _ = load_checkpoint(model, 'https://s3.ap-northeast-2.amazonaws.com/open-mmlab/mmdetection/models/faster_rcnn_x101_64x4d_fpn_1x_20181218-c9c69c8f.pth')
+_ = load_checkpoint(model, 'https://s3.ap-northeast-2.amazonaws.com/open-mmlab/mmdetection/models/dcn/cascade_mask_rcnn_dconv_c3-c5_r50_fpn_1x_20190125-09d8a443.pth')
 
 
 # test a single image
 img = mmcv.imread('test_images/00000001.jpg')
 result = inference_detector(model, img, cfg)
+# show_result(img, result)
 
 res = get_class_boxes(img, result, dataset='coco', class_int=0, score_thr=0.8, show_result=True)
 
