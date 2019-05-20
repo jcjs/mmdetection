@@ -38,8 +38,14 @@ def get_class_bboxes(input_path, model, cfg, dataset='coco', class_int=0, score_
 
     img_sizes = [mmcv.imread(img).shape for img in img_fnames]
 
+    if not all(size == img_sizes[0] for size in img_sizes):
+        raise Exception('Not all images are of the same size!')
+
     class_names = get_classes(dataset)
-    out = dict()
+
+    result_dict = dict()
+    result_dict['image_size'] = img_sizes[0][:2]
+    result_dict['results'] = dict()
 
     for idx, det in enumerate(list(detections)):
         if isinstance(det, tuple):
@@ -73,7 +79,7 @@ def get_class_bboxes(input_path, model, cfg, dataset='coco', class_int=0, score_
                 label_name = class_names[label] if class_names is not None else 'cls {}'.format(label)
                 data.append({'label': label_name, 'bbox': {'lt': left_top, 'rb': right_bottom}})
 
-            out[os.path.basename(img_fnames[idx])] = {'size': img_sizes[idx][:2], 'results': data.copy()}
+            result_dict['results'][os.path.basename(img_fnames[idx])] = data.copy()
             data.clear()
 
             ## Debug
@@ -89,10 +95,10 @@ def get_class_bboxes(input_path, model, cfg, dataset='coco', class_int=0, score_
             ##
 
     with open('{}_detection_bboxes.json'.format(time.strftime("%Y%m%d%H%M%S")), 'w') as out_file:
-        json.dump(out, out_file)
+        json.dump(result_dict, out_file)
 
     # print(json.dumps(out))  # debug
-    return out
+    return result_dict
 
 
 def main():
