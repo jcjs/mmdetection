@@ -33,6 +33,10 @@ def get_class_bboxes(input_path, model, cfg, dataset='coco', class_int=0, score_
     elif os.path.isfile(input_path):
         img_fnames = [input_path]
         detections = [inference_detector(model, input_path, cfg)]
+    else:
+        raise Exception('Provided image path is not a file or directory.')
+
+    img_sizes = [mmcv.imread(img).shape for img in img_fnames]
 
     class_names = get_classes(dataset)
     out = dict()
@@ -69,7 +73,7 @@ def get_class_bboxes(input_path, model, cfg, dataset='coco', class_int=0, score_
                 label_name = class_names[label] if class_names is not None else 'cls {}'.format(label)
                 data.append({'label': label_name, 'bbox': {'lt': left_top, 'rb': right_bottom}})
 
-            out[os.path.basename(img_fnames[idx])] = data.copy()
+            out[os.path.basename(img_fnames[idx])] = {'image_size': img_sizes[idx][:2], 'results': data.copy()}
             data.clear()
 
             ## Debug
