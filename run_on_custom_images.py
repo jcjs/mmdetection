@@ -119,7 +119,7 @@ def main():
     _ = load_checkpoint(model, 'https://s3.ap-northeast-2.amazonaws.com/open-mmlab/mmdetection/models/dcn/cascade_mask_rcnn_dconv_c3-c5_r50_fpn_1x_20190125-09d8a443.pth')
 
     img_path = args.path
-    out = get_class_bboxes(img_path, model, cfg, dataset='coco', class_int=0, score_thr=0.78, show_result=True)
+    out = get_class_bboxes(img_path, model, cfg, dataset='coco', class_int=0, score_thr=0.78, show_result=False)
 
 
 if __name__ == "__main__":
