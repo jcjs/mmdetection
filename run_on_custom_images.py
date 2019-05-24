@@ -1,7 +1,7 @@
 import mmcv
 from mmcv.runner import load_checkpoint
 from mmdet.models import build_detector
-from mmdet.apis import inference_detector, show_result
+from mmdet.apis import init_detector, inference_detector, show_result
 
 import numpy as np
 from mmdet.core import get_classes
@@ -29,10 +29,10 @@ def get_class_bboxes(input_path, model, cfg, dataset='coco', class_int=0, score_
     '''
     if os.path.isdir(input_path):
         img_fnames = glob.glob('{}/*.jpg'.format(input_path))
-        detections = inference_detector(model, img_fnames, cfg)
+        detections = inference_detector(model, img_fnames)
     elif os.path.isfile(input_path):
         img_fnames = [input_path]
-        detections = [inference_detector(model, input_path, cfg)]
+        detections = [inference_detector(model, input_path)]
     else:
         raise Exception('Provided image path is not a file or directory.')
 
@@ -109,16 +109,19 @@ def main():
 
     # cfg = mmcv.Config.fromfile('configs/faster_rcnn_r50_fpn_1x.py')
     # cfg = mmcv.Config.fromfile('configs/faster_rcnn_x101_64x4d_fpn_1x.py')
-    cfg = mmcv.Config.fromfile('configs/dcn/cascade_mask_rcnn_dconv_c3-c5_r50_fpn_1x.py')
+    # cfg = mmcv.Config.fromfile('configs/dcn/cascade_mask_rcnn_dconv_c3-c5_r50_fpn_1x.py')
     # cfg = mmcv.Config.fromfile('configs/retinanet_x101_64x4d_fpn_1x.py')
+    cfg = mmcv.Config.fromfile('configs/htc/htc_x101_64x4d_fpn_20e_16gpu.py')
     cfg.model.pretrained = None
 
     # construct the model and load checkpoint
-    model = build_detector(cfg.model, test_cfg=cfg.test_cfg)
+    # model = build_detector(cfg.model, test_cfg=cfg.test_cfg)
+    model = init_detector(cfg)
     # _ = load_checkpoint(model, 'https://s3.ap-northeast-2.amazonaws.com/open-mmlab/mmdetection/models/faster_rcnn_r50_fpn_1x_20181010-3d1b3351.pth')
     # _ = load_checkpoint(model, 'https://s3.ap-northeast-2.amazonaws.com/open-mmlab/mmdetection/models/faster_rcnn_x101_64x4d_fpn_1x_20181218-c9c69c8f.pth')
-    _ = load_checkpoint(model, 'https://s3.ap-northeast-2.amazonaws.com/open-mmlab/mmdetection/models/dcn/cascade_mask_rcnn_dconv_c3-c5_r50_fpn_1x_20190125-09d8a443.pth')
+    # _ = load_checkpoint(model, 'https://s3.ap-northeast-2.amazonaws.com/open-mmlab/mmdetection/models/dcn/cascade_mask_rcnn_dconv_c3-c5_r50_fpn_1x_20190125-09d8a443.pth')
     # _ = load_checkpoint(model, 'https://s3.ap-northeast-2.amazonaws.com/open-mmlab/mmdetection/models/retinanet_x101_64x4d_fpn_1x_20181218-2f6f778b.pth')
+    _ = load_checkpoint(model, 'https://s3.ap-northeast-2.amazonaws.com/open-mmlab/mmdetection/models/htc/htc_x101_64x4d_fpn_20e_20190408-497f2561.pth')
 
     img_path = args.path
     out = get_class_bboxes(img_path, model, cfg, dataset='coco', class_int=0, score_thr=0.78, show_result=False)
