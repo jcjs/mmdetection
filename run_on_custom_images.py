@@ -24,7 +24,7 @@ def gen_fnames(vid_frames):
         img_fnames.append('{}.jpg'.format(frame_fname))
     return img_fnames
 
-def get_class_bboxes(input_path, model, cfg, dataset='coco', class_int=0, score_thr=0.78, show_result=False):
+def get_class_bboxes(model, cfg, args, dataset='coco'):
     '''
     :param input_path:
     :param model:
@@ -37,19 +37,19 @@ def get_class_bboxes(input_path, model, cfg, dataset='coco', class_int=0, score_
     '''
     vid_frames = list()
 
-    if os.path.isdir(input_path):
-        img_fnames = glob.glob('{}/*.jpg'.format(input_path))
+    if os.path.isdir(args.input_path):
+        img_fnames = glob.glob('{}/*.jpg'.format(args.input_path))
         img_size = mmcv.imread(img_fnames[0]).shape[:2]
         detections = inference_detector(model, img_fnames, cfg)
-    elif os.path.isfile(input_path):
-        mime = magic.from_file(input_path, mime=True)
+    elif os.path.isfile(args.input_path):
+        mime = magic.from_file(args.input_path, mime=True)
         if 'image' in mime:
-            img_fnames = [input_path]
+            img_fnames = [args.input_path]
             img_size = mmcv.imread(img_fnames[0]).shape[:2]
-            detections = [inference_detector(model, input_path, cfg)]
+            detections = [inference_detector(model, args.input_path, cfg)]
         elif 'video' in mime:
             # Read video (iterator)
-            video_it = mmcv.VideoReader(input_path)
+            video_it = mmcv.VideoReader(args.input_path)
             vid_frames = list(video_it)
 
             # auto-generate virtual file names to keep coherence
@@ -89,8 +89,8 @@ def get_class_bboxes(input_path, model, cfg, dataset='coco', class_int=0, score_
 
             labels = np.concatenate(labels)
 
-            filter_thr = np.where(bboxes[:, -1] > score_thr)[0]
-            filter_class = np.where(labels == class_int)[0]
+            filter_thr = np.where(bboxes[:, -1] > args.score)[0]
+            filter_class = np.where(labels == args.cls)[0]
             filter_idxs = np.intersect1d(filter_thr, filter_class)
 
             bboxes = bboxes[filter_idxs]
@@ -109,16 +109,15 @@ def get_class_bboxes(input_path, model, cfg, dataset='coco', class_int=0, score_
             ## Debug
             if show_result:
                 img = vid_frames[idx] if vid_frames else mmcv.imread(img_fnames[idx])
-                mmcv.imshow_det_bboxes(
-                    img.copy(),
-                    bboxes,
-                    labels,
-                    class_names=class_names,
-                    score_thr=score_thr,
-                    show=show_result)
+                mmcv.imshow_det_bboxes(img.copy(), bboxes, labels, class_names=class_names, score_thr=args.score,
+                    show=args.show)
             ##
 
-    with open('{}_detection_bboxes.json'.format(time.strftime("%Y%m%d%H%M%S")), 'w') as out_file:
+    # with open('{}_detection_bboxes.json'.format(time.strftime("%Y%m%d%H%M%S")), 'w') as out_file:
+    #     json.dump(result_dict, out_file)
+
+    # Save JSON file
+    with open('{}/{}_detection_bboxes.json'.format(args.output_path, time.strftime("%Y%m%d%H%M%S")), 'w') as out_file:
         json.dump(result_dict, out_file)
 
     # print(json.dumps(out))  # debug
@@ -127,11 +126,13 @@ def get_class_bboxes(input_path, model, cfg, dataset='coco', class_int=0, score_
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-p", "--path", help="Path to directory containing images OR path to a single image",
+    parser.add_argument("-i", "--input_path", help="Path to directory containing images OR path to a video",
                         required=True)
-    parser.add_argument("-c", "--cls", default=0, help="Coco class index (int)")
-    parser.add_argument("-sc", "--score", default=0.90, help="Score threshold (0-1)")
-    parser.add_argument("-s", "--show", help="Show result", action='store_true')
+    parser.add_argument("-o", "--output_path", help="Desired output dir", required=True)
+    parser.add_argument("-c", "--cls", default=0, help="Coco class index (int)", required=False)
+    parser.add_argument("-sc", "--score", default=0.90, help="Score threshold (0-1)", required=False)
+    parser.add_argument("-s", "--show", help="Show result", default=False, action='store_true')
+
     args = parser.parse_args()
 
     cfg = mmcv.Config.fromfile('configs/dcn/cascade_mask_rcnn_dconv_c3-c5_r50_fpn_1x.py')
@@ -141,8 +142,10 @@ def main():
     model = build_detector(cfg.model, test_cfg=cfg.test_cfg)
     _ = load_checkpoint(model, 'https://s3.ap-northeast-2.amazonaws.com/open-mmlab/mmdetection/models/dcn/cascade_mask_rcnn_dconv_c3-c5_r50_fpn_1x_20190125-09d8a443.pth')
 
-    out = get_class_bboxes(args.path, model, cfg, dataset='coco', class_int=args.cls, score_thr=args.score,
-    show_result=args.show)
+    # out = get_class_bboxes(args.path, model, cfg, output_path=args.output_path, dataset='coco', class_int=args.cls,
+    #                        score_thr=args.score, show_result=args.show)
+
+    out = get_class_bboxes(model, cfg, args, dataset='coco')
 
 
 if __name__ == "__main__":
