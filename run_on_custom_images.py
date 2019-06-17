@@ -13,11 +13,19 @@ import glob
 import time
 
 import argparse
+import magic
 
+def gen_fnames(vid_frames):
+    img_fnames = list()
+    for n in range(len(vid_frames)):
+        frame_fname = list('000000')
+        frame_fname[-len(str(n))::] = str(n)
+        frame_fname = str().join(frame_fname)
+        img_fnames.append('{}.jpg'.format(frame_fname))
+    return img_fnames
 
 def get_class_bboxes(input_path, model, cfg, dataset='coco', class_int=0, score_thr=0.78, show_result=False):
     '''
-
     :param input_path:
     :param model:
     :param cfg:
@@ -27,24 +35,40 @@ def get_class_bboxes(input_path, model, cfg, dataset='coco', class_int=0, score_
     :param show_result:
     :return:
     '''
+    vid_frames = list()
+
     if os.path.isdir(input_path):
         img_fnames = glob.glob('{}/*.jpg'.format(input_path))
+        img_size = mmcv.imread(img_fnames[0]).shape[:2]
         detections = inference_detector(model, img_fnames, cfg)
     elif os.path.isfile(input_path):
-        img_fnames = [input_path]
-        detections = [inference_detector(model, input_path, cfg)]
+        mime = magic.from_file(input_path, mime=True)
+        if 'image' in mime:
+            img_fnames = [input_path]
+            img_size = mmcv.imread(img_fnames[0]).shape[:2]
+            detections = [inference_detector(model, input_path, cfg)]
+        elif 'video' in mime:
+            # Read video (iterator)
+            video_it = mmcv.VideoReader(input_path)
+            vid_frames = list(video_it)
+
+            # auto-generate virtual file names to keep coherence
+            img_fnames = gen_fnames(vid_frames)
+
+            # img_fnames = ['{}.jpg'.format(n*step + 1) for n in range(len(np_images_vid))]
+
+            img_size = video_it.resolution
+            detections = inference_detector(model, vid_frames, cfg)
+        else:
+            raise Exception('Input file type not supported.')
     else:
-        raise Exception('Provided image path is not a file or directory.')
+        raise Exception('Input path does not exist.')
 
-    img_sizes = [mmcv.imread(img).shape for img in img_fnames]
-
-    if not all(size == img_sizes[0] for size in img_sizes):
-        raise Exception('Not all images are of the same size!')
 
     class_names = get_classes(dataset)
 
     result_dict = dict()
-    result_dict['image_size'] = img_sizes[0][:2]
+    result_dict['image_size'] = img_size
     result_dict['results'] = dict()
 
     for idx, det in enumerate(list(detections)):
@@ -84,7 +108,7 @@ def get_class_bboxes(input_path, model, cfg, dataset='coco', class_int=0, score_
 
             ## Debug
             if show_result:
-                img = mmcv.imread(img_fnames[idx])
+                img = vid_frames[idx] if vid_frames else mmcv.imread(img_fnames[idx])
                 mmcv.imshow_det_bboxes(
                     img.copy(),
                     bboxes,
@@ -107,21 +131,14 @@ def main():
                         required=True)
     args = parser.parse_args()
 
-    # cfg = mmcv.Config.fromfile('configs/faster_rcnn_r50_fpn_1x.py')
-    # cfg = mmcv.Config.fromfile('configs/faster_rcnn_x101_64x4d_fpn_1x.py')
     cfg = mmcv.Config.fromfile('configs/dcn/cascade_mask_rcnn_dconv_c3-c5_r50_fpn_1x.py')
-    # cfg = mmcv.Config.fromfile('configs/retinanet_x101_64x4d_fpn_1x.py')
     cfg.model.pretrained = None
 
     # construct the model and load checkpoint
     model = build_detector(cfg.model, test_cfg=cfg.test_cfg)
-    # _ = load_checkpoint(model, 'https://s3.ap-northeast-2.amazonaws.com/open-mmlab/mmdetection/models/faster_rcnn_r50_fpn_1x_20181010-3d1b3351.pth')
-    # _ = load_checkpoint(model, 'https://s3.ap-northeast-2.amazonaws.com/open-mmlab/mmdetection/models/faster_rcnn_x101_64x4d_fpn_1x_20181218-c9c69c8f.pth')
     _ = load_checkpoint(model, 'https://s3.ap-northeast-2.amazonaws.com/open-mmlab/mmdetection/models/dcn/cascade_mask_rcnn_dconv_c3-c5_r50_fpn_1x_20190125-09d8a443.pth')
-    # _ = load_checkpoint(model, 'https://s3.ap-northeast-2.amazonaws.com/open-mmlab/mmdetection/models/retinanet_x101_64x4d_fpn_1x_20181218-2f6f778b.pth')
 
-    img_path = args.path
-    out = get_class_bboxes(img_path, model, cfg, dataset='coco', class_int=0, score_thr=0.78, show_result=False)
+    out = get_class_bboxes(args.path, model, cfg, dataset='coco', class_int=0, score_thr=0.93, show_result=False)
 
 
 if __name__ == "__main__":
