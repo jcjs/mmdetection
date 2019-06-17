@@ -129,6 +129,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--path", help="Path to directory containing images OR path to a single image",
                         required=True)
+    parser.add_argument("-c", "--cls", default=0, help="Coco class index (int)")
+    parser.add_argument("-sc", "--score", default=0.90, help="Score threshold (0-1)")
+    parser.add_argument("-s", "--show", help="Show result", action='store_true')
     args = parser.parse_args()
 
     cfg = mmcv.Config.fromfile('configs/dcn/cascade_mask_rcnn_dconv_c3-c5_r50_fpn_1x.py')
@@ -138,7 +141,8 @@ def main():
     model = build_detector(cfg.model, test_cfg=cfg.test_cfg)
     _ = load_checkpoint(model, 'https://s3.ap-northeast-2.amazonaws.com/open-mmlab/mmdetection/models/dcn/cascade_mask_rcnn_dconv_c3-c5_r50_fpn_1x_20190125-09d8a443.pth')
 
-    out = get_class_bboxes(args.path, model, cfg, dataset='coco', class_int=0, score_thr=0.93, show_result=False)
+    out = get_class_bboxes(args.path, model, cfg, dataset='coco', class_int=args.cls, score_thr=args.score,
+    show_result=args.show)
 
 
 if __name__ == "__main__":
